@@ -6,7 +6,9 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-DATABASE_URL = "mysql+pymysql://root:mysql@localhost:3306/network_traffic"
+from dotenv import load_dotenv
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:mysql@localhost:3306/network_traffic")
 
 engine = create_engine(
     DATABASE_URL,

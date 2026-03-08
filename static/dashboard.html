@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NetWatch — Traffic Analysis</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&display=swap');
+
+  :root {
+    --bg:       #090c10;
+    --surface:  #0d1117;
+    --border:   #1c2333;
+    --accent:   #00d9ff;
+    --green:    #3fb950;
+    --yellow:   #d29922;
+    --red:      #f85149;
+    --orange:   #ff7b00;
+    --muted:    #6e7681;
+    --text:     #cdd9e5;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-ui:   'Syne', sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(13,17,23,.95);
+    position: sticky; top:0; z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  .logo {
+    font-family: var(--font-ui);
+    font-weight: 800;
+    font-size: 1.35rem;
+    letter-spacing: -.02em;
+    color: var(--accent);
+  }
+  .logo span { color: var(--text); opacity:.5; }
+  .status-pill {
+    display: flex; align-items: center; gap: 8px;
+    font-size: .75rem; color: var(--muted);
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ── LAYOUT ── */
+  main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* ── STAT CARDS ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 22px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .stat-card:hover { border-color: var(--accent); }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top:0; left:0; right:0;
+    height: 2px;
+  }
+  .stat-card.blue::before  { background: var(--accent); }
+  .stat-card.green::before { background: var(--green); }
+  .stat-card.red::before   { background: var(--red); }
+  .stat-card.orange::before{ background: var(--orange); }
+  .stat-label {
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .stat-value {
+    font-family: var(--font-ui);
+    font-weight: 800;
+    font-size: 2.2rem;
+    line-height: 1;
+  }
+  .stat-card.blue  .stat-value { color: var(--accent); }
+  .stat-card.green .stat-value { color: var(--green); }
+  .stat-card.red   .stat-value { color: var(--red); }
+  .stat-card.orange .stat-value { color: var(--orange); }
+
+  /* ── TWO COLUMN ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* ── PANELS ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--muted);
+  }
+  .panel-header strong { color: var(--text); font-weight: 600; }
+
+  /* ── TABLE ── */
+  .log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .78rem;
+  }
+  .log-table th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+    background: rgba(255,255,255,.02);
+    border-bottom: 1px solid var(--border);
+  }
+  .log-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid rgba(28,35,51,.6);
+    vertical-align: middle;
+  }
+  .log-table tr:last-child td { border-bottom: none; }
+  .log-table tr:hover td { background: rgba(0,217,255,.03); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+  }
+  .badge-critical { background: rgba(248,81,73,.15); color: var(--red); border: 1px solid rgba(248,81,73,.3); }
+  .badge-high     { background: rgba(255,123,0,.15);  color: var(--orange); border: 1px solid rgba(255,123,0,.3); }
+  .badge-medium   { background: rgba(210,153,34,.15); color: var(--yellow); border: 1px solid rgba(210,153,34,.3); }
+  .badge-low      { background: rgba(63,185,80,.1);   color: var(--green);  border: 1px solid rgba(63,185,80,.3); }
+  .badge-flagged  { background: rgba(248,81,73,.12); color: var(--red); border: 1px solid rgba(248,81,73,.25); }
+  .badge-ok       { background: rgba(63,185,80,.08);  color: var(--green);  border: 1px solid rgba(63,185,80,.2); }
+
+  /* ── BAR CHART ── */
+  .bar-list { padding: 14px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .bar-item label {
+    display: flex; justify-content: space-between;
+    font-size: .75rem; margin-bottom: 5px;
+    color: var(--text);
+  }
+  .bar-item label span { color: var(--muted); }
+  .bar-track {
+    height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), #0099bb);
+    transition: width .6s cubic-bezier(.4,0,.2,1);
+  }
+
+  /* ── INGEST FORM ── */
+  .ingest-form {
+    padding: 18px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1/-1; }
+  .form-group label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .form-group input, .form-group select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 8px 10px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: .82rem;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+  .form-group select option { background: var(--surface); }
+
+  .btn {
+    grid-column: 1/-1;
+    padding: 10px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: .82rem;
+    cursor: pointer;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    transition: opacity .15s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn:disabled { opacity: .4; cursor: default; }
+
+  /* ── RESPONSE BOX ── */
+  .response-box {
+    margin: 0 18px 18px;
+    padding: 12px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: .78rem;
+    line-height: 1.6;
+    display: none;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .response-box.show { display: block; }
+  .response-box.ok   { border-color: var(--green); color: var(--green); }
+  .response-box.err  { border-color: var(--red);   color: var(--red); }
+
+  /* ── SPINNER ── */
+  .spinner {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Net<span>Watch</span> / Traffic Analysis System</div>
+  <div class="status-pill"><div class="dot"></div> API LIVE — localhost:8000</div>
+</header>
+
+<main>
+
+  <!-- STAT CARDS -->
+  <div class="stats-grid">
+    <div class="stat-card blue">
+      <div class="stat-label">Total Logs</div>
+      <div class="stat-value" id="s-total">—</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Flagged Logs</div>
+      <div class="stat-value" id="s-flagged">—</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-label">Total Alerts</div>
+      <div class="stat-value" id="s-alerts">—</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Unresolved</div>
+      <div class="stat-value" id="s-unresolved">—</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+
+    <!-- TOP SOURCE IPs -->
+    <div class="panel">
+      <div class="panel-header"><strong>Top Source IPs</strong><span id="ips-spin"></span></div>
+      <div class="bar-list" id="top-ips">
+        <div style="color:var(--muted);font-size:.8rem;padding:10px 0">Loading…</div>
+      </div>
+    </div>
+
+    <!-- PROTOCOL BREAKDOWN -->
+    <div class="panel">
+      <div class="panel-header"><strong>Protocol Breakdown</strong></div>
+      <div class="bar-list" id="proto-bars">
+        <div style="color:var(--muted);font-size:.8rem;padding:10px 0">Loading…</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="two-col">
+
+    <!-- INGEST FORM -->
+    <div class="panel">
+      <div class="panel-header"><strong>Ingest Traffic Log</strong> <span style="color:var(--accent)">POST /api/traffic/ingest</span></div>
+      <div class="ingest-form" id="ingest-form">
+        <div class="form-group">
+          <label>Source IP</label>
+          <input id="f-src-ip" value="192.168.1.15"/>
+        </div>
+        <div class="form-group">
+          <label>Dest IP</label>
+          <input id="f-dst-ip" value="203.0.113.50"/>
+        </div>
+        <div class="form-group">
+          <label>Source Port</label>
+          <input id="f-src-port" type="number" value="52341"/>
+        </div>
+        <div class="form-group">
+          <label>Dest Port</label>
+          <input id="f-dst-port" type="number" value="443"/>
+        </div>
+        <div class="form-group">
+          <label>Protocol</label>
+          <select id="f-protocol">
+            <option>HTTPS</option><option>HTTP</option><option>TCP</option>
+            <option>UDP</option><option>DNS</option><option>ICMP</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Action</label>
+          <select id="f-action"><option>allow</option><option>block</option></select>
+        </div>
+        <div class="form-group">
+          <label>Bytes Sent</label>
+          <input id="f-bytes-sent" type="number" value="104857600"/>
+        </div>
+        <div class="form-group">
+          <label>Bytes Recv</label>
+          <input id="f-bytes-recv" type="number" value="2048"/>
+        </div>
+        <button class="btn" id="ingest-btn" onclick="ingestLog()">⬆ Submit Log</button>
+      </div>
+      <div class="response-box" id="ingest-resp"></div>
+    </div>
+
+    <!-- RECENT ALERTS -->
+    <div class="panel">
+      <div class="panel-header"><strong>Recent Alerts</strong> <span style="color:var(--muted);font-size:.7rem">GET /api/alerts</span></div>
+      <div style="overflow-x:auto">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Severity</th>
+              <th>Source IP</th>
+              <th>Port</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="alerts-tbody">
+            <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TRAFFIC LOGS TABLE -->
+  <div class="panel" style="margin-bottom:32px">
+    <div class="panel-header">
+      <strong>Traffic Logs</strong>
+      <span>
+        <button onclick="loadLogs(false)" style="background:none;border:1px solid var(--border);color:var(--muted);padding:3px 10px;border-radius:4px;cursor:pointer;font-family:var(--font-mono);font-size:.7rem">ALL</button>
+        <button onclick="loadLogs(true)"  style="background:none;border:1px solid var(--red);color:var(--red);padding:3px 10px;border-radius:4px;cursor:pointer;font-family:var(--font-mono);font-size:.7rem;margin-left:6px">FLAGGED</button>
+      </span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Timestamp</th>
+            <th>Src IP</th>
+            <th>Dst IP</th>
+            <th>Port</th>
+            <th>Proto</th>
+            <th>Bytes ↑</th>
+            <th>Bytes ↓</th>
+            <th>Action</th>
+            <th>Flag</th>
+          </tr>
+        </thead>
+        <tbody id="logs-tbody">
+          <tr><td colspan="10" style="color:var(--muted);text-align:center;padding:20px">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const BASE = '';  // same origin
+
+function fmtBytes(b) {
+  if (b >= 1e9) return (b/1e9).toFixed(1)+' GB';
+  if (b >= 1e6) return (b/1e6).toFixed(1)+' MB';
+  if (b >= 1e3) return (b/1e3).toFixed(1)+' KB';
+  return b+' B';
+}
+function fmtDate(d) {
+  const dt = new Date(d);
+  return dt.toLocaleDateString()+' '+dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+
+// ── STATS ──
+async function loadStats() {
+  try {
+    const r = await fetch(`${BASE}/api/stats/`);
+    const d = await r.json();
+    document.getElementById('s-total').textContent      = d.total_logs.toLocaleString();
+    document.getElementById('s-flagged').textContent    = d.flagged_logs.toLocaleString();
+    document.getElementById('s-alerts').textContent     = d.total_alerts.toLocaleString();
+    document.getElementById('s-unresolved').textContent = d.unresolved_alerts.toLocaleString();
+
+    // IP bars
+    const maxIp = Math.max(...d.top_source_ips.map(x=>x.count), 1);
+    document.getElementById('top-ips').innerHTML = d.top_source_ips.length
+      ? d.top_source_ips.map(x=>`
+        <div class="bar-item">
+          <label>${x.ip} <span>${x.count} logs</span></label>
+          <div class="bar-track"><div class="bar-fill" style="width:${(x.count/maxIp*100).toFixed(1)}%"></div></div>
+        </div>`).join('')
+      : '<div style="color:var(--muted);font-size:.8rem">No data yet</div>';
+
+    // Protocol bars
+    const maxP = Math.max(...d.protocol_breakdown.map(x=>x.count), 1);
+    document.getElementById('proto-bars').innerHTML = d.protocol_breakdown.length
+      ? d.protocol_breakdown.map(x=>`
+        <div class="bar-item">
+          <label>${x.protocol} <span>${x.count} logs</span></label>
+          <div class="bar-track"><div class="bar-fill" style="width:${(x.count/maxP*100).toFixed(1)}%"></div></div>
+        </div>`).join('')
+      : '<div style="color:var(--muted);font-size:.8rem">No data yet</div>';
+  } catch(e) {
+    document.getElementById('s-total').textContent = 'ERR';
+  }
+}
+
+// ── ALERTS ──
+async function loadAlerts() {
+  try {
+    const r = await fetch(`${BASE}/api/alerts/?limit=8`);
+    const data = await r.json();
+    const tbody = document.getElementById('alerts-tbody');
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">No alerts yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(a => `
+      <tr>
+        <td style="font-size:.72rem;color:var(--text)">${a.alert_type.replace(/_/g,' ')}</td>
+        <td><span class="badge badge-${a.severity}">${a.severity.toUpperCase()}</span></td>
+        <td>${a.source_ip}</td>
+        <td>${a.dest_port ?? '—'}</td>
+        <td><span class="badge ${a.resolved?'badge-ok':'badge-flagged'}">${a.resolved?'RESOLVED':'OPEN'}</span></td>
+      </tr>`).join('');
+  } catch(e) {}
+}
+
+// ── LOGS ──
+async function loadLogs(flaggedOnly=false) {
+  try {
+    const url = flaggedOnly
+      ? `${BASE}/api/traffic/?limit=15&flagged=true`
+      : `${BASE}/api/traffic/?limit=15`;
+    const r = await fetch(url);
+    const data = await r.json();
+    const tbody = document.getElementById('logs-tbody');
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="10" style="color:var(--muted);text-align:center;padding:20px">No logs yet — try seeding or ingesting data</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(l=>`
+      <tr>
+        <td style="color:var(--muted)">${l.id}</td>
+        <td style="font-size:.72rem;color:var(--muted)">${fmtDate(l.timestamp)}</td>
+        <td>${l.source_ip}</td>
+        <td>${l.dest_ip}</td>
+        <td><code style="color:var(--accent)">${l.dest_port}</code></td>
+        <td><span style="color:var(--yellow)">${l.protocol}</span></td>
+        <td>${fmtBytes(l.bytes_sent)}</td>
+        <td>${fmtBytes(l.bytes_recv)}</td>
+        <td><span class="badge ${l.action==='block'?'badge-high':'badge-low'}">${l.action.toUpperCase()}</span></td>
+        <td><span class="badge ${l.flagged?'badge-flagged':'badge-ok'}">${l.flagged?'⚠ YES':'✓ OK'}</span></td>
+      </tr>`).join('');
+  } catch(e) {}
+}
+
+// ── INGEST ──
+async function ingestLog() {
+  const btn  = document.getElementById('ingest-btn');
+  const resp = document.getElementById('ingest-resp');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Submitting…';
+  resp.className = 'response-box';
+
+  const payload = {
+    source_ip:   document.getElementById('f-src-ip').value,
+    dest_ip:     document.getElementById('f-dst-ip').value,
+    source_port: parseInt(document.getElementById('f-src-port').value),
+    dest_port:   parseInt(document.getElementById('f-dst-port').value),
+    protocol:    document.getElementById('f-protocol').value,
+    action:      document.getElementById('f-action').value,
+    bytes_sent:  parseFloat(document.getElementById('f-bytes-sent').value),
+    bytes_recv:  parseFloat(document.getElementById('f-bytes-recv').value),
+  };
+
+  try {
+    const r = await fetch(`${BASE}/api/traffic/ingest`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json();
+    if (r.ok) {
+      resp.className = 'response-box show ok';
+      resp.textContent = `✅ Log #${data.id} ingested\nFlagged: ${data.flagged}`;
+      setTimeout(()=>{ loadStats(); loadAlerts(); loadLogs(); }, 300);
+    } else {
+      resp.className = 'response-box show err';
+      resp.textContent = '❌ '+JSON.stringify(data, null, 2);
+    }
+  } catch(e) {
+    resp.className = 'response-box show err';
+    resp.textContent = '❌ Network error — is the server running?';
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '⬆ Submit Log';
+}
+
+// ── INIT ──
+loadStats();
+loadAlerts();
+loadLogs();
+setInterval(()=>{ loadStats(); loadAlerts(); loadLogs(); }, 10000);
+</script>
+</body>
+</html>

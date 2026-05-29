@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Firewall Operations Console - NetWatch</title>
+  <!-- PREMIUM TYPOGRAPHY -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- SIDEBAR NAVIGATION -->
+  <div class="sidebar">
+    <div class="brand">
+      <span class="brand-accent">NET</span>WATCH
+      <div class="brand-sub">PC SECURITY MONITOR</div>
+    </div>
+    <a href="/" class="nav-item">
+      <span class="nav-icon">📊</span> SOC Dashboard
+    </a>
+    <a href="/security-center" class="nav-item">
+      <span class="nav-icon">🛡️</span> Security Center
+    </a>
+    <a href="/firewall-console" class="nav-item active">
+      <span class="nav-icon">🧱</span> Firewall Console
+    </a>
+    
+    <!-- SYSTEM SUMMARY -->
+    <div class="sidebar-status-box">
+      <div class="status-box-title">LOCAL AGENT DETAILS</div>
+      <div class="status-box-row"><span>Host OS:</span> <strong>Windows PC</strong></div>
+      <div class="status-box-row"><span>Engine:</span> <strong>psutil / scapy</strong></div>
+      <div class="status-box-row"><span>Mode:</span> <strong>Active Firewall</strong></div>
+    </div>
+  </div>
+
+  <!-- MAIN SCOPE -->
+  <div class="main">
+    <!-- TOP STATUS AND COMMAND HEADER -->
+    <header class="topbar">
+      <div>
+        <h1>Firewall Operations Console</h1>
+        <p>Full-width real-time socket flows & live port block policy manager</p>
+      </div>
+      <div class="live-status">
+        <span class="live-dot-pulse"></span>
+        <span class="status-text">DEEP PACKET INSPECTION ONLINE</span>
+      </div>
+    </header>
+
+    <!-- FULL-WIDTH WIRESHARK LIVE STREAMS -->
+    <div class="card wireshark-flow-card" style="height: 480px; width: 100%;">
+      <div class="wireshark-header-controls">
+        <div class="card-title-container" style="margin-bottom: 0;">
+          <span class="card-title">Live Captured Socket Traffic Flow (DPI)</span>
+          <span class="card-subtitle" style="display: block; margin-top: 2px;">Click on any packet row to inspect decodes & payload hex dumps.</span>
+        </div>
+        <!-- CAPTURE SWITCHES -->
+        <div class="btn-group">
+          <button id="toggle-stream-btn" class="action-btn active-capture" onclick="toggleStreamCapture()">
+            <span class="btn-dot green" id="stream-pulse-dot"></span>
+            <span id="toggle-text">Capture Active</span>
+          </button>
+          <button class="action-btn" onclick="clearPacketStream()">
+            <span>Clear Stream</span>
+          </button>
+        </div>
+      </div>
+      
+      <!-- INSTANT STREAM SEARCH -->
+      <div class="table-search-wrapper" style="margin-bottom: 10px;">
+        <input
+          type="text"
+          id="streamSearch"
+          placeholder="🔍 Instant filter by Application, IP, Port, or Protocol..."
+          oninput="filterStreamTable()"
+          style="width: 100%; padding: 10px 14px; font-size: 0.78rem; border-radius: 8px; border: 1px solid var(--border-color); outline: none; transition: border-color 0.2s;"
+        />
+      </div>
+      
+      <div class="table-wrapper wireshark-wrapper">
+        <table class="wireshark-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Application Module</th>
+              <th>Source Socket</th>
+              <th>Destination Socket</th>
+              <th>Protocol</th>
+              <th>Frame Size</th>
+              <th>Firewall Action</th>
+            </tr>
+          </thead>
+          <tbody id="wireshark-tbody">
+            <tr class="wireshark-placeholder">
+              <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 50px;">
+                Waiting for active Windows socket connections... (Ensure live_sniffer.py is running)
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TWO-COLUMN PACKET DETAILS & DECODERS -->
+    <section class="columns-grid" style="grid-template-columns: 1fr 1fr; width: 100%; gap: 20px;">
+      
+      <!-- COLUMN 1: HEADER DECODERS & POLICY FORM -->
+      <div class="card" style="display: flex; flex-direction: column; height: 420px; overflow-y: auto;">
+        <div class="card-title-container" style="margin-bottom: 12px;">
+          <span class="card-title">Packet Decoder & Policy Control</span>
+        </div>
+        
+        <div id="inspector-decode-pane" class="inspector-pane active" style="margin-top: 0;">
+          <!-- Decoded Headers and dynamic firewall rule deployer -->
+          <div class="inspector-placeholder">
+            <p>Select a packet socket in the stream above to inspect fields.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUMN 2: MONOSPACE RAW HEX INSPECTOR -->
+      <div class="card" style="display: flex; flex-direction: column; height: 420px; overflow: hidden;">
+        <div class="card-title-container" style="margin-bottom: 12px;">
+          <span class="card-title">Raw Hexadecimal Payload Decode</span>
+          <span class="card-subtitle">Hover bytes to highlight corresponding ASCII</span>
+        </div>
+        
+        <div id="inspector-hex-pane" class="inspector-pane active" style="margin-top: 0; overflow-y: auto;">
+          <div class="inspector-placeholder">
+            <p>Select a packet socket above to decode raw hexadecimal payload.</p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <script src="/static/js/firewall_console.js"></script>
+</body>
+</html>

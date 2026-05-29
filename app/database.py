@@ -29,4 +29,4 @@ def get_db():
 def init_db():
     from app import models  # noqa: F401 — registers models
     Base.metadata.create_all(bind=engine)
-    print("✅ Database tables created.")
+    print("Database tables created.")

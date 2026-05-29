@@ -18,7 +18,9 @@ SUSPICIOUS_PORTS = {
 }
 
 KNOWN_MALICIOUS_IPS = {
-    "10.0.0.99",    # placeholder — replace with real threat-intel feed
+    "10.0.0.99",
+    "185.220.101.4",
+    "45.95.147.21",
 }
 
 
@@ -46,26 +48,30 @@ def analyze(
     """
     alerts: List[DetectedAlert] = []
 
-    # Rule 1 – High data transfer
+    # Detect if loopback connection to avoid massive noise during local sniffer capturing
+    is_loopback = (source_ip in {"127.0.0.1", "::1"} or dest_ip in {"127.0.0.1", "::1"})
+
+    # Rule 1 – High data transfer (suppressed on loopback for noise filtering)
     total_bytes = bytes_sent + bytes_recv
-    if total_bytes >= HIGH_TRANSFER_BYTES:
-        alerts.append(DetectedAlert(
-            alert_type="HIGH_DATA_TRANSFER",
-            severity="high",
-            description=(
-                f"Abnormally large transfer: {total_bytes / (1024*1024):.1f} MB "
-                f"between {source_ip} → {dest_ip}"
-            ),
-        ))
-    elif total_bytes >= MEDIUM_TRANSFER_BYTES:
-        alerts.append(DetectedAlert(
-            alert_type="ELEVATED_DATA_TRANSFER",
-            severity="medium",
-            description=(
-                f"Elevated transfer: {total_bytes / (1024*1024):.1f} MB "
-                f"between {source_ip} → {dest_ip}"
-            ),
-        ))
+    if not is_loopback:
+        if total_bytes >= HIGH_TRANSFER_BYTES:
+            alerts.append(DetectedAlert(
+                alert_type="HIGH_DATA_TRANSFER",
+                severity="high",
+                description=(
+                    f"Abnormally large transfer: {total_bytes / (1024*1024):.1f} MB "
+                    f"between {source_ip} → {dest_ip}"
+                ),
+            ))
+        elif total_bytes >= MEDIUM_TRANSFER_BYTES:
+            alerts.append(DetectedAlert(
+                alert_type="ELEVATED_DATA_TRANSFER",
+                severity="medium",
+                description=(
+                    f"Elevated transfer: {total_bytes / (1024*1024):.1f} MB "
+                    f"between {source_ip} → {dest_ip}"
+                ),
+            ))
 
     # Rule 2 – Suspicious destination port
     if dest_port in SUSPICIOUS_PORTS:

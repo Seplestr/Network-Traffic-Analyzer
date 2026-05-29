@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Security Center - NetWatch</title>
+  <!-- PREMIUM TYPOGRAPHY -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+
+  <!-- SIDEBAR NAVIGATION -->
+  <div class="sidebar">
+    <div class="brand">
+      <span class="brand-accent">NET</span>WATCH
+      <div class="brand-sub">PC SECURITY MONITOR</div>
+    </div>
+    <a href="/" class="nav-item">
+      <span class="nav-icon">📊</span> SOC Dashboard
+    </a>
+    <a href="/security-center" class="nav-item active">
+      <span class="nav-icon">🛡️</span> Security Center
+    </a>
+    <a href="/firewall-console" class="nav-item">
+      <span class="nav-icon">🧱</span> Firewall Console
+    </a>
+    
+    <!-- SYSTEM SUMMARY -->
+    <div class="sidebar-status-box">
+      <div class="status-box-title">LOCAL AGENT DETAILS</div>
+      <div class="status-box-row"><span>Host OS:</span> <strong>Windows PC</strong></div>
+      <div class="status-box-row"><span>Engine:</span> <strong>psutil / scapy</strong></div>
+      <div class="status-box-row"><span>Mode:</span> <strong>Active Firewall</strong></div>
+    </div>
+  </div>
+
+  <!-- MAIN SCOPE -->
+  <div class="main">
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div>
+        <h1>Security Operations & Threat Center</h1>
+        <p>Active anomaly incident mitigation & real-time global threat intelligence</p>
+      </div>
+      <div class="live-status">
+        <span class="live-dot-pulse" style="background: var(--red); box-shadow: 0 0 8px var(--red);"></span>
+        <span class="status-text" style="color: #9f1239;">RESPONSE READY</span>
+      </div>
+    </header>
+
+    <!-- GRID SPLIT -->
+    <section class="columns-grid" style="grid-template-columns: 1.15fr 0.85fr; width: 100%; gap: 20px;">
+      
+      <!-- LEFT COLUMN: INCIDENT BOARDS & POLICY LISTS -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        
+        <!-- INCIDENTS BOARD -->
+        <div class="card alerts-card" style="display: flex; flex-direction: column; min-height: 280px;">
+          <div class="card-title-container">
+            <span class="card-title">Dynamic Incident Mitigation Board</span>
+            <span class="card-subtitle">Enforce host rules patches</span>
+          </div>
+          
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Severity</th>
+                  <th>Incident Classification</th>
+                  <th>Trigger Source IP</th>
+                  <th>Incident Mitigation Controls</th>
+                </tr>
+              </thead>
+              <tbody id="alertsTable">
+                <tr>
+                  <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                    Querying active incident telemetry...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ACTIVE POLICIES -->
+        <div class="card" style="display: flex; flex-direction: column; min-height: 260px;">
+          <div class="card-title-container">
+            <span class="card-title">Active Firewall Block Policies</span>
+            <span class="card-subtitle">Live database enforcements</span>
+          </div>
+          
+          <div id="active-firewall-rules" class="firewall-rules-list" style="max-height: 240px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 0;">
+            <!-- Dynamically populated rules -->
+            <div class="inspector-placeholder" style="grid-column: span 2; padding: 20px 0;">
+              <p>Querying dynamic policies...</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN: IRL THREAT INTEL & NEWS bulletins -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        
+        <!-- INTEL BRIEFING HUB -->
+        <div class="card red-glow" style="display: flex; flex-direction: column; gap: 15px;">
+          <div class="card-title-container" style="margin-bottom: 0;">
+            <span class="card-title">Global Threat Level Dial</span>
+          </div>
+          
+          <!-- Threat severity dial aligned horizontally -->
+          <div style="display: flex; align-items: center; justify-content: space-around; padding: 10px 0;">
+            <div class="threat-gauge-container" style="width: 110px; height: 55px;">
+              <div class="threat-gauge" style="width: 110px; height: 110px;">
+                <div class="threat-gauge-fill" id="threat-fill" style="width: 110px; height: 110px;"></div>
+                <div class="threat-gauge-cover" style="width: 92px; height: 92px; top: 8px; left: 8px; padding-bottom: 30px;">
+                  <span id="threat-percentage" style="font-size: 1.15rem;">0%</span>
+                  <span class="threat-label secure" id="threat-label">SECURE</span>
+                </div>
+              </div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">System Exposure:</span>
+              <span id="threat-exposure-badge" class="badge low" style="padding: 4px 8px; font-size: 0.65rem;">LOW THREAT LEVEL</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- IRL CYBERSECURITY BREACH BULLS -->
+        <div class="card" style="display: flex; flex-direction: column; height: 430px; overflow: hidden;">
+          <div class="card-title-container" style="margin-bottom: 12px;">
+            <span class="card-title">IRL Threat Intel & Cyber Breach Bulletins</span>
+            <span class="card-subtitle">Real-time CISA / FBI alerts</span>
+          </div>
+          
+          <div id="intel-feed" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 5px;">
+            <!-- Dynamically populated cyber breach feed items -->
+            <div class="inspector-placeholder">
+              <p>Fetching active global threat intel...</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </div>
+
+  <script src="/static/js/security_center.js"></script>
+</body>
+</html>

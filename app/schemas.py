@@ -16,6 +16,7 @@ class TrafficLogCreate(BaseModel):
     bytes_recv:   float = Field(..., ge=0)
     duration_sec: Optional[float] = None
     action:       str   = Field(default="allow", example="allow")
+    app_name:     Optional[str] = Field(default="SYSTEM", example="chrome.exe")
 
     @field_validator("source_ip", "dest_ip")
     @classmethod
@@ -82,3 +83,33 @@ class StatsResponse(BaseModel):
     top_source_ips:   List[dict]
     top_dest_ports:   List[dict]
     protocol_breakdown: List[dict]
+
+
+# ─── Firewall Rules ───────────────────────────────────────────────────────────
+
+class FirewallRuleCreate(BaseModel):
+    rule_type: str = Field(..., example="app")  # "ip", "port", "app"
+    value:     str = Field(..., example="chrome.exe")
+    action:    str = Field(default="block", example="block")
+
+    @field_validator("rule_type")
+    @classmethod
+    def validate_rule_type(cls, v):
+        if v.lower() not in {"ip", "port", "app"}:
+            raise ValueError("Rule type must be 'ip', 'port', or 'app'")
+        return v.lower()
+
+    @field_validator("action")
+    @classmethod
+    def validate_action(cls, v):
+        if v.lower() not in {"allow", "block"}:
+            raise ValueError("Action must be 'allow' or 'block'")
+        return v.lower()
+
+
+class FirewallRuleResponse(FirewallRuleCreate):
+    id:         int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+

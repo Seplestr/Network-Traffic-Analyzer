@@ -44,7 +44,56 @@ def resolve_alert(alert_id: int, db: Session = Depends(get_db)):
     alert = db.query(SecurityAlert).filter(SecurityAlert.id == alert_id).first()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
+    
     alert.resolved = True
+    
+    # ─── ACTIVE DEFENSIVE MITIGATION ───
+    # Dynamically inject an active firewall block policy matching this threat trigger
+    from app.models import FirewallRule, TrafficLog
+    
+    rule_type = None
+    rule_value = None
+    
+    # Inspect threat type
+    if alert.alert_type in ("SUSPICIOUS_PORT", "PLAINTEXT_ADMIN_PROTOCOL") and alert.dest_port:
+        rule_type = "port"
+        rule_value = str(alert.dest_port)
+    elif alert.alert_type == "MALICIOUS_SOURCE_IP":
+        rule_type = "ip"
+        rule_value = alert.source_ip
+    else:
+        # Fallback: Check if there's an executable we can block
+        if alert.traffic_log_id:
+            log = db.query(TrafficLog).filter(TrafficLog.id == alert.traffic_log_id).first()
+            if log and log.app_name and log.app_name not in ("SYSTEM", "UNKNOWN", "scapy_sniffer"):
+                rule_type = "app"
+                rule_value = log.app_name
+                
+        # If no specific application, block the target source IP address
+        if not rule_type or not rule_value:
+            rule_type = "ip"
+            rule_value = alert.source_ip
+            
+    if rule_type and rule_value:
+        val_clean = rule_value.strip()
+        # Verify duplicate rule doesn't exist
+        existing = (
+            db.query(FirewallRule)
+            .filter(
+                FirewallRule.rule_type == rule_type,
+                FirewallRule.value == val_clean
+            )
+            .first()
+        )
+        if not existing:
+            db_rule = FirewallRule(
+                rule_type=rule_type,
+                value=val_clean,
+                action="block"
+            )
+            db.add(db_rule)
+
     db.commit()
     db.refresh(alert)
     return alert
+

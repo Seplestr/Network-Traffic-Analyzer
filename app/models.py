@@ -18,6 +18,7 @@ class TrafficLog(Base):
     bytes_recv    = Column(Float, nullable=False, default=0)
     duration_sec  = Column(Float, nullable=True)
     action        = Column(String(20), default="allow")      # allow / block
+    app_name      = Column(String(100), nullable=True, default="SYSTEM")
     flagged       = Column(Boolean, default=False, index=True)
     created_at    = Column(DateTime, default=datetime.utcnow)
 
@@ -36,3 +37,15 @@ class SecurityAlert(Base):
     description   = Column(Text, nullable=True)
     resolved      = Column(Boolean, default=False, index=True)
     created_at    = Column(DateTime, default=datetime.utcnow, index=True)
+
+
+class FirewallRule(Base):
+    """Stores custom user firewall block policies."""
+    __tablename__ = "firewall_rules"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    rule_type     = Column(String(20), nullable=False)       # "ip" | "port" | "app"
+    value         = Column(String(100), nullable=False, index=True)
+    action        = Column(String(20), default="block")      # "allow" | "block"
+    created_at    = Column(DateTime, default=datetime.utcnow)
+

@@ -1,91 +1,110 @@
-# Network Traffic Analysis System
+# NetWatch: Interactive PC Firewall & Network SOC Console
 
-A REST-based backend to ingest, store, and analyze network traffic logs with rule-based anomaly detection.
+A production-grade, high-fidelity **Personal Desktop Security & Dynamic Firewall Console** that sniffs active Windows host network connections in real-time, maps connection sockets directly to local executable modules (e.g. `chrome.exe`, `python.exe`), and enforces automated firewall blocks dynamically.
 
-**Stack:** Python · FastAPI · SQLAlchemy · SQLite (swap to MySQL in one line) · Pydantic
+**Stack:** Python · FastAPI · SQLAlchemy · MySQL (PyMySQL) · Pydantic · Scapy · psutil · Chart.js
 
 ---
 
-## Quick Start (VS Code)
+## 📊 Visual Showcases (UI Screenshots)
 
-### 1. Install dependencies
+### 1. SOC Dashboard (Real-Time Ingestion & Telemetry Analytics)
+![SOC Dashboard](screenshots/dashboard_light_theme.png)
+
+### 2. Security Operations & Response Center (Active Threat Containment & CISA Bulletins)
+![Security Center](screenshots/security_center_alerts.png)
+
+### 3. Firewall Operations Console (Full-Width Sockets Flow & Hover Hex Decoder)
+![Firewall Console](screenshots/firewall_console_flow.png)
+
+---
+
+## 🚀 Architectural Overview
+
+NetWatch operates as a lightweight, reactive **SOAR (Security Orchestration, Automation, and Response)** platform:
+1. **Live Sniffer Daemon (`live_sniffer.py`)**: Intercepts active network connections on your actual Windows host via Scapy raw packets or psutil socket-to-process PID mapping, immediately POSTing socket records to the backend.
+2. **Ingestion & Policy Interceptor (`app/routers/traffic.py`)**: Evaluates incoming logs against dynamic database firewall policies in real-time. Matches are instantly flagged as `BLOCK` events and generate critical security alerts.
+3. **Decoupled Unified Portal (`static/`)**: A highly polished administrative Light SOC Console separating telemetries, incident mitigation boards, and full-screen traffic flow streams.
+
+---
+
+## ⚡ Quick Start
+
+### 1. Configure MySQL Database Connection
+Set your MySQL server connection string in your `.env` file:
+```env
+DATABASE_URL=mysql+pymysql://root:mysql@localhost:3306/network_traffic
+```
+
+### 2. Start the FastAPI Web Server
+Launch the server with the auto-reload flag:
 ```bash
-pip install -r requirements.txt
+uv run uvicorn app.main:app --port 8000 --reload
 ```
+*(On startup, NetWatch will automatically initialize all required database tables including `traffic_logs`, `security_alerts`, and `firewall_rules`.)*
 
-### 2. Run the server
+### 3. Start the Live Host Sniffer Daemon
+In a separate terminal window, launch the tracker:
 ```bash
-uvicorn app.main:app --reload
+uv run live_sniffer.py
 ```
+*(The sniffer will query active host PIDs and stream connections dynamically.)*
 
-### 3. Open the dashboard
-Visit → http://127.0.0.1:8000
-
-### 4. Seed sample data (optional)
-In a separate terminal:
-```bash
-python seed_data.py
-```
+### 4. Access the SOC Console Portal
+Open your browser and navigate to:
+👉 **SOC Dashboard**: http://127.0.0.1:8000  
+👉 **Security Center**: http://127.0.0.1:8000/security-center  
+👉 **Firewall Console**: http://127.0.0.1:8000/firewall-console  
 
 ---
 
-## API Endpoints
+## 🛡️ Core API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/traffic/ingest` | Ingest a single log |
-| POST | `/api/traffic/ingest/bulk` | Ingest up to 1000 logs |
-| GET  | `/api/traffic/` | List logs (filterable) |
-| GET  | `/api/traffic/{id}` | Get log by ID |
-| DELETE | `/api/traffic/{id}` | Delete a log |
-| GET  | `/api/alerts/` | List alerts |
-| PATCH | `/api/alerts/{id}/resolve` | Resolve an alert |
-| GET  | `/api/stats/` | Aggregate stats |
+### Traffic Logs
+* `POST /api/traffic/ingest` - Ingest a single captured network socket log.
+* `POST /api/traffic/ingest/bulk` - Ingest up to 1000 logs simultaneously.
+* `GET /api/traffic/` - Query paginated captures (filterable by protocol, status, IP).
 
-Interactive docs → http://127.0.0.1:8000/docs
+### Dynamic Firewall Policies
+* `GET /api/firewall/` - List all active dynamic database block policies.
+* `POST /api/firewall/` - Create a new block rule (Executable app name, target IP, or Port).
+* `DELETE /api/firewall/{rule_id}` - Revoke an active block policy instantly.
 
----
-
-## Anomaly Detection Rules
-
-| Rule | Trigger | Severity |
-|------|---------|----------|
-| `HIGH_DATA_TRANSFER` | Transfer > 100 MB | High |
-| `ELEVATED_DATA_TRANSFER` | Transfer > 10 MB | Medium |
-| `SUSPICIOUS_PORT` | Dest port in {22,23,3389,4444,445,...} | Medium–Critical |
-| `MALICIOUS_SOURCE_IP` | IP matches threat-intel list | Critical |
-| `BLOCKED_TRAFFIC_LOGGED` | action = "block" | Low |
-| `BURST_TRAFFIC` | >1 MB in <1 sec | High |
-| `PLAINTEXT_ADMIN_PROTOCOL` | Telnet (port 23) | High |
+### Security Incidents & Threat Intel
+* `GET /api/alerts/` - Query recorded anomaly logs requiring analyst response.
+* `PATCH /api/alerts/{id}/resolve` - Mark an alert resolved and automatically deploy active firewall containment matching the threat parameters!
+* `GET /api/stats/` - Query aggregated volume metrics, protocol share counts, and top sources.
+* `GET /api/stats/intel` - Dynamic IRL threat bulletins feed aggregating major zero-day CVE advisories and ransomware campaign bulletins.
 
 ---
 
-## Switch to MySQL
+## 📂 Project Structure
 
-In `.env` or your shell:
-```
-DATABASE_URL=mysql+pymysql://user:password@localhost:3306/network_traffic
-```
-Then uncomment `pymysql` in `requirements.txt` and `pip install pymysql`.
-
----
-
-## Project Structure
 ```
 network-traffic-analyzer/
 ├── app/
-│   ├── main.py          # FastAPI app + middleware
-│   ├── database.py      # SQLAlchemy engine + session
-│   ├── models.py        # DB models (TrafficLog, SecurityAlert)
-│   ├── schemas.py       # Pydantic request/response schemas
-│   ├── detection.py     # Rule-based anomaly detection engine
+│   ├── main.py              # Core FastAPI app & page router routes
+│   ├── database.py          # SQLAlchemy connection engine
+│   ├── models.py            # DB Models (TrafficLog, SecurityAlert, FirewallRule)
+│   ├── schemas.py           # Pydantic request & response validators
+│   ├── detection.py         # Rule-based anomalies detection engine
 │   └── routers/
-│       ├── traffic.py   # /api/traffic endpoints
-│       ├── alerts.py    # /api/alerts endpoints
-│       └── stats.py     # /api/stats endpoint
+│       ├── traffic.py       # Live flow ingestion & client WebSocket streams
+│       ├── alerts.py        # Mitigate alerts & dynamic defensive containment
+│       ├── stats.py         # Telemetry aggregation & IRL CISA Threat feed
+│       └── firewall.py      # Dynamic policies registry controls
 ├── static/
-│   └── dashboard.html   # Browser dashboard (auto-served)
-├── seed_data.py         # Populate DB with sample traffic
-├── requirements.txt
-└── README.md
+│   ├── dashboard.html       # Visual analytics charts portal
+│   ├── css/
+│   │   └── dashboard.css    # Unified administrative Light SOC stylesheet
+│   ├── js/
+│   │   ├── dashboard.js     # Telemetry & volume tables controller
+│   │   ├── firewall_console.js # Live WebSocket stream & hex editor highlights
+│   │   └── security_center.js  # Incident board & Threat news updates
+│   └── pages/
+│       ├── firewall_console.html # Wide stream packet flow console
+│       └── security_center.html  # Incident mitigation & Threat Hub
+├── live_sniffer.py          # Active host Scapy/psutil socket sniffer
+├── requirements.txt         # Project package requirements list
+└── README.md                # Comprehensive documentation
 ```
